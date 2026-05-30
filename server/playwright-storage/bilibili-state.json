@@ -1,0 +1,115 @@
+{
+  "cookies": [
+    {
+      "name": "_uuid",
+      "value": "51F1086310-A4DD-6CAB-6EF9-147ECB82FBF981536infoc",
+      "domain": ".bilibili.com",
+      "path": "/",
+      "expires": 1811658981,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "buvid3",
+      "value": "138F8F03-FCB9-C948-4E8E-94559BD84ECB82090infoc",
+      "domain": ".bilibili.com",
+      "path": "/",
+      "expires": 1814682982.01462,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "b_nut",
+      "value": "1780122982",
+      "domain": ".bilibili.com",
+      "path": "/",
+      "expires": 1811658982.01473,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "buvid4",
+      "value": "96735A60-8625-2F48-3460-8B62249C5EFE82511-026053014-7m0d8cEVg%2FqOmH7vg%2Fb4xg%3D%3D",
+      "domain": ".bilibili.com",
+      "path": "/",
+      "expires": 1814682982.584273,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "bili_ticket",
+      "value": "eyJhbGciOiJIUzI1NiIsImtpZCI6InMwMyIsInR5cCI6IkpXVCJ9.eyJleHAiOjE3ODAzODIxODIsImlhdCI6MTc4MDEyMjkyMiwicGx0IjotMX0.8Xn-gtrh58b5Gty5mGvp_lCh5eBhcMGuexKNA2aD_zg",
+      "domain": ".bilibili.com",
+      "path": "/",
+      "expires": 1780382182,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "bili_ticket_expires",
+      "value": "1780382122",
+      "domain": ".bilibili.com",
+      "path": "/",
+      "expires": 1780382182,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "b_lsid",
+      "value": "5B5CA622_19E77991F60",
+      "domain": ".bilibili.com",
+      "path": "/",
+      "expires": -1,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    },
+    {
+      "name": "buvid_fp",
+      "value": "bbc2dc0f3322106dd5ed8ae9efc7bf56",
+      "domain": ".bilibili.com",
+      "path": "/",
+      "expires": 1811658984,
+      "httpOnly": false,
+      "secure": false,
+      "sameSite": "Lax"
+    }
+  ],
+  "origins": [
+    {
+      "origin": "https://passport.bilibili.com",
+      "localStorage": [
+        {
+          "name": "secure_collect_last_report_time_138F8F03-FCB9-C948-4E8E-94559BD84ECB82090infoc",
+          "value": "1780122984395"
+        },
+        {
+          "name": "secure_collect_report_interval_138F8F03-FCB9-C948-4E8E-94559BD84ECB82090infoc",
+          "value": "60"
+        },
+        {
+          "name": "BILI_MIRROR_REPORT_POOL",
+          "value": "{\"333.1228.main.passport-pc.DATA.successReport\":{\"type\":\"custom\",\"mirrorVersion\":\"2.1.0\",\"_BiliGreyResult_method\":\"base\",\"_BiliGreyResult_versionId\":\"219942\",\"mirrorPolymer\":3,\"//api.bilibili.com/x/web-interface/nav\":1,\"/x/passport-login/web/qrcode/generate\":1,\"/x/passport-login/captcha\":1,\"/x/passport-login/web/qrcode/poll\":2}}"
+        },
+        {
+          "name": "__reporter-pb-sample-config",
+          "value": "{\"444.8.live-room.chronos.init.before.check\":50,\"333.788.memory.timeline.performance\":50,\"444.8.live-room.uam-player.welcome.failed\":50,\"333.1334.kv-init.error\":1,\"333.1334.kv-init.pv\":1,\"333.40181.secureCollect.collectDeviceInfo\":1,\"333.40181.secureCollect.successReport\":1,\"333.40181.secureCollect.wasmProcessTime\":1,\"444.8.live-room.room-page.live-web-danmaku-tech-report\":20}"
+        },
+        {
+          "name": "KV_CONFIG_SDK",
+          "value": "{\"333.1333_0\":{\"timestamp\":1780122982285,\"lastUsed\":1780122982321,\"value\":{\"bilimirror.minilogin\":\"{\\\"buvid\\\":[\\\"B6771AA6-7CCD-4EF2-BA5B-1FDE9A25F49A49120infoc\\\",\\\"D025573B-8686-0D9D-48DB-0C84BBB5544A45226infoc\\\",\\\"9BD89CEC-4C19-E243-63B3-9A69417B70A458220infoc\\\",\\\"4AD0D8C7-D936-FB67-4C33-7A13C004E84478537infoc\\\",\\\"84AF2B23-9DC9-0717-A474-BCB7A866198994970infoc\\\",\\\"F4373CB5-E491-2C2A-0541-2FFFC3DF2FCC71448infoc\\\"],\\\"rate\\\":0}\",\"bilimirror.toplist\":\"{\\\"playLogUmd\\\":\\\"https://s1.hdslb.com/bfs/static/log-manipulator@0.2.1/index.js\\\",\\\"trackGray\\\":0,\\\"trackGrayV2\\\":1,\\\"resourceStats\\\":{\\\"enabled\\\":true,\\\"sampleRate\\\":0,\\\"rules\\\":[{\\\"key\\\":\\\"333.1007.main.home-page\\\",\\\"sampleRate\\\":5}]}}\",\"bilimirror.whitelist\":\"{\\\"white\\\":{\\\"rejection\\\":[\\\"extension\\\",\\\"maximum\\\",\\\"SVGIconNext\\\"],\\\"error\\\":[\\\"extension\\\",\\\"SVGIconNext\\\"],\\\"resource\\\":[\\\"extension\\\",\\\"localhost\\\"]},\\\"retry\\\":[],\\\"performance\\\":1,\\\"techpv\\\":5,\\\"poll\\\":5,\\\"userLog\\\":[],\\\"track\\\":{\\\"mid\\\":[],\\\"buvid\\\":[]},\\\"trackGrayV2\\\":1}\"},\"versionId\":\"1772162031366\",\"appVersionId\":\"37253\",\"nscode\":0,\"appKey\":\"333.1333\",\"expires\":2592000000},\"333.1228_0\":{\"timestamp\":1780122982309,\"lastUsed\":1780122982409,\"value\":{\"bilimirror.whitelist\":\"{\\\"white\\\":{\\\"rejection\\\":[\\\"chrome-extension\\\",\\\"Reached maximum\\\"],\\\"error\\\":[\\\"chrome-extension\\\"],\\\"resource\\\":[\\\"chrome-extension\\\"]},\\\"retry\\\":[],\\\"api\\\":[\\\"/web-interface/nav\\\"],\\\"performance\\\":1}\"},\"versionId\":\"1737633152934\",\"appVersionId\":\"32706\",\"nscode\":0,\"appKey\":\"333.1228\",\"expires\":2592000000}}"
+        },
+        {
+          "name": "wbi_img_urls",
+          "value": "https://i0.hdslb.com/bfs/wbi/7cd084941338484aae1ad9425b84077c.png-https://i0.hdslb.com/bfs/wbi/4932caff0ff746eab6f01bf08b70ac45.png"
+        }
+      ]
+    }
+  ]
+}
