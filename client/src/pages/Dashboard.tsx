@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Plus, FileText, Trash2, Clock, LogOut, Loader2, Settings } from 'lucide-react'
-import { GlassButton, GlassCard } from '@/components/ui'
+import { Plus, FileText, Trash2, Clock, LogOut, Loader2, Settings, Zap } from 'lucide-react'
+import { NeoButton, NeoCard } from '@/components/ui/Neo'
 import { contentApi } from '@/services/api'
 import { useAuthStore } from '@/store/authStore'
 import type { Content } from '@/types'
@@ -56,127 +56,138 @@ export default function Dashboard() {
     })
   }
 
-  const platformNames: Record<string, string> = {
-    wechat: '微信公众号',
-    zhihu: '知乎',
-    bilibili: 'B站',
-    xiaohongshu: '小红书',
-  }
-
-  const platformColors: Record<string, string> = {
-    wechat: 'bg-green-500/20 text-green-300 border-green-400/30',
-    zhihu: 'bg-blue-500/20 text-blue-300 border-blue-400/30',
-    bilibili: 'bg-pink-500/20 text-pink-300 border-pink-400/30',
-    xiaohongshu: 'bg-red-500/20 text-red-300 border-red-400/30',
+  const platformColors: Record<string, { bg: string; text: string }> = {
+    wechat: { bg: 'bg-green-400', text: 'text-green-800' },
+    zhihu: { bg: 'bg-blue-400', text: 'text-blue-800' },
+    bilibili: { bg: 'bg-pink-400', text: 'text-pink-800' },
+    xiaohongshu: { bg: 'bg-red-400', text: 'text-red-800' },
   }
 
   return (
-    <div className="min-h-screen gradient-bg">
-      <header className="bg-black/20 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
+    <div className="min-h-screen bg-[#FFFDF5]">
+      {/* Header */}
+      <header className="bg-[#FFD93D] border-b-4 border-black sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-white">多平台发布工具</h1>
-            <p className="text-white/50 text-sm">内容管理</p>
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-black text-[#FFD93D] border-4 border-black shadow-[4px_4px_0px_0px_#000]">
+              <Zap className="w-6 h-6" strokeWidth={3} />
+            </div>
+            <div>
+              <h1 className="text-xl font-black uppercase tracking-tight">多平台发布工具</h1>
+              <p className="text-sm text-black/60 font-bold uppercase tracking-wider">内容管理</p>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/settings')}
-              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white"
+              className="p-3 bg-white border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
               title="平台授权设置"
             >
-              <Settings className="w-5 h-5" />
+              <Settings className="w-5 h-5" strokeWidth={3} />
             </button>
-            <div className="text-right">
-              <p className="text-white font-medium">{user?.username}</p>
-              <p className="text-white/50 text-sm">{user?.email}</p>
+            <div className="text-right px-4 py-2 bg-white border-4 border-black">
+              <p className="font-black">{user?.username}</p>
+              <p className="text-sm text-black/50 font-bold">{user?.email}</p>
             </div>
             <button
               onClick={handleLogout}
-              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white"
+              className="p-3 bg-[#FF6B6B] border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
               title="退出登录"
             >
-              <LogOut className="w-5 h-5" />
+              <LogOut className="w-5 h-5" strokeWidth={3} />
             </button>
           </div>
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h2 className="text-2xl font-bold text-white">我的内容</h2>
-            <p className="text-white/60 mt-1">管理你的创作内容并发布到各平台</p>
+            <h2 className="text-3xl font-black uppercase tracking-tight">我的内容</h2>
+            <p className="text-black/60 mt-1 font-bold uppercase tracking-wider">管理你的创作并发布</p>
           </div>
 
-          <GlassButton onClick={() => navigate('/editor')}>
-            <Plus className="w-5 h-5" />
-            新建内容
-          </GlassButton>
+          <NeoButton onClick={() => navigate('/editor')}>
+            <Plus className="w-5 h-5" strokeWidth={3} />
+            新建
+          </NeoButton>
         </div>
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-white animate-spin" />
+            <Loader2 className="w-12 h-12 text-black animate-spin" strokeWidth={3} />
           </div>
         ) : contents.length === 0 ? (
-          <GlassCard className="text-center py-20">
-            <FileText className="w-16 h-16 text-white/30 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-white/80 mb-2">暂无内容</h3>
-            <p className="text-white/50 mb-6">开始创建你的第一篇内容吧</p>
-            <GlassButton onClick={() => navigate('/editor')}>
-              <Plus className="w-5 h-5" />
-              创建内容
-            </GlassButton>
-          </GlassCard>
+          <NeoCard bgColor="white">
+            <div className="p-12 text-center">
+              <FileText className="w-20 h-20 text-black/20 mx-auto mb-4" strokeWidth={2} />
+              <h3 className="text-2xl font-black uppercase mb-2">暂无内容</h3>
+              <p className="text-black/50 mb-6 font-bold uppercase tracking-wider">开始创建你的第一篇内容吧</p>
+              <NeoButton onClick={() => navigate('/editor')}>
+                <Plus className="w-5 h-5" strokeWidth={3} />
+                创建内容
+              </NeoButton>
+            </div>
+          </NeoCard>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {contents.map((content) => (
-              <GlassCard key={content.id} variant="hover" className="group cursor-pointer" onClick={() => navigate(`/editor/${content.id}`)}>
-                <div className="p-6">
-                  <div className="flex items-start justify-between mb-4">
-                    <h3 className="text-lg font-medium text-white line-clamp-2 flex-1 pr-4">
-                      {content.title}
-                    </h3>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleDelete(content.id)
-                      }}
-                      className="p-2 rounded-lg bg-white/5 hover:bg-red-500/20 text-white/40 hover:text-red-400 transition-all"
-                      disabled={deletingId === content.id}
-                    >
-                      {deletingId === content.id ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        <Trash2 className="w-4 h-4" />
-                      )}
-                    </button>
-                  </div>
-
-                  <p className="text-white/50 text-sm line-clamp-3 mb-4">
-                    {content.body.replace(/<[^>]+>/g, '').substring(0, 100)}...
-                  </p>
-
-                  {content.platforms.length > 0 && (
-                    <div className="flex flex-wrap gap-2 mb-4">
-                      {content.platforms.map((platform) => (
-                        <span
-                          key={platform}
-                          className={`px-2 py-1 rounded-full text-xs border ${platformColors[platform] || 'bg-white/10'}`}
-                        >
-                          {platformNames[platform] || platform}
-                        </span>
-                      ))}
+              <div
+                key={content.id}
+                onClick={() => navigate(`/editor/${content.id}`)}
+                className="cursor-pointer"
+              >
+                <NeoCard bgColor="white">
+                  <div className="p-6">
+                    <div className="flex items-start justify-between mb-4">
+                      <h3 className="text-lg font-black line-clamp-2 flex-1 pr-4 uppercase">
+                        {content.title}
+                      </h3>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDelete(content.id)
+                        }}
+                        className="p-2 bg-[#FF6B6B] border-2 border-black hover:bg-white transition-all"
+                        disabled={deletingId === content.id}
+                      >
+                        {deletingId === content.id ? (
+                          <Loader2 className="w-4 h-4 animate-spin" strokeWidth={3} />
+                        ) : (
+                          <Trash2 className="w-4 h-4" strokeWidth={3} />
+                        )}
+                      </button>
                     </div>
-                  )}
 
-                  <div className="flex items-center gap-1 text-white/40 text-xs">
-                    <Clock className="w-3 h-3" />
-                    {formatDate(content.updatedAt)}
+                    <p className="text-black/60 text-sm line-clamp-3 mb-4 font-medium">
+                      {content.body.replace(/<[^>]+>/g, '').substring(0, 100)}...
+                    </p>
+
+                    {content.platforms.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-4">
+                        {content.platforms.map((platform) => {
+                          const colors = platformColors[platform] || { bg: 'bg-gray-400', text: 'text-gray-800' }
+                          return (
+                            <span
+                              key={platform}
+                              className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black ${colors.bg}`}
+                            >
+                              {platform}
+                            </span>
+                          )
+                        })}
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 text-black/40 text-sm font-bold uppercase tracking-wider">
+                      <Clock className="w-4 h-4" strokeWidth={3} />
+                      {formatDate(content.updatedAt)}
+                    </div>
                   </div>
-                </div>
-              </GlassCard>
+                </NeoCard>
+              </div>
             ))}
           </div>
         )}

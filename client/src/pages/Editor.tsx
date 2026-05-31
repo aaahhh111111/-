@@ -17,32 +17,26 @@ import {
   X,
   Image,
   Film,
+  Star,
+  Zap,
 } from 'lucide-react'
-import { GlassButton, GlassCard, GlassInput } from '@/components/ui'
+import { NeoButton, NeoCard, NeoInput } from '@/components/ui/Neo'
 import RichEditor from '@/components/Editor/RichEditor'
-import { contentApi, publishApi, uploadApi, LaunchResult } from '@/services/api'
-import { useAuthStore } from '@/store/authStore'
+import { contentApi, publishApi, uploadApi } from '@/services/api'
 import type { Content, Platform, MediaFile, MediaType } from '@/types'
 
 const platformIcons: Record<string, React.ReactNode> = {
-  wechat: <MessageCircle className="w-5 h-5" />,
-  zhihu: <HelpCircle className="w-5 h-5" />,
-  bilibili: <Video className="w-5 h-5" />,
-  xiaohongshu: <BookOpen className="w-5 h-5" />,
+  wechat: <MessageCircle className="w-6 h-6" strokeWidth={3} />,
+  zhihu: <HelpCircle className="w-6 h-6" strokeWidth={3} />,
+  bilibili: <Video className="w-6 h-6" strokeWidth={3} />,
+  xiaohongshu: <BookOpen className="w-6 h-6" strokeWidth={3} />,
 }
 
-const platformColors: Record<string, string> = {
-  wechat: 'border-green-400/50 bg-green-500/10',
-  zhihu: 'border-blue-400/50 bg-blue-500/10',
-  bilibili: 'border-pink-400/50 bg-pink-500/10',
-  xiaohongshu: 'border-red-400/50 bg-red-500/10',
-}
-
-const platformTextColors: Record<string, string> = {
-  wechat: 'text-green-400',
-  zhihu: 'text-blue-400',
-  bilibili: 'text-pink-400',
-  xiaohongshu: 'text-red-400',
+const platformColors: Record<string, { bg: string; border: string; text: string }> = {
+  wechat: { bg: 'bg-green-400', border: 'border-green-600', text: 'text-green-800' },
+  zhihu: { bg: 'bg-blue-400', border: 'border-blue-600', text: 'text-blue-800' },
+  bilibili: { bg: 'bg-pink-400', border: 'border-pink-600', text: 'text-pink-800' },
+  xiaohongshu: { bg: 'bg-red-400', border: 'border-red-600', text: 'text-red-800' },
 }
 
 export default function Editor() {
@@ -119,7 +113,6 @@ export default function Editor() {
         navigate(`/editor/${savedContent.id}`, { replace: true })
       }
       
-      // 同步内容到扩展
       syncToExtension(savedContent)
     } catch (error) {
       console.error('Failed to save:', error)
@@ -129,26 +122,22 @@ export default function Editor() {
     }
   }
   
-  // 同步内容到浏览器扩展
   const syncToExtension = async (contentData: any) => {
     try {
-      // 保存到 localStorage（供第三方页面读取）
       const saveData = {
         id: contentData.id,
         title: contentData.title,
         body: contentData.body,
         tags: contentData.tags || [],
+        media_files: contentData.media_files || [],
         timestamp: Date.now()
       }
       localStorage.setItem('qiniu_last_saved_content', JSON.stringify(saveData))
       localStorage.setItem('qiniu_pending_content_id', contentData.id)
       
-      // 通过全局函数触发主站脚本同步
       if (typeof window !== 'undefined' && (window as any).__qiniuSyncToExtension) {
         await (window as any).__qiniuSyncToExtension(saveData)
       }
-      
-      console.log('内容已同步到扩展')
     } catch (e) {
       console.warn('同步到扩展失败:', e)
     }
@@ -220,10 +209,7 @@ export default function Editor() {
       setPublishResults(launchResults)
       setShowResults(true)
 
-      // 保存到 localStorage（供 hash 路由页面读取）
       localStorage.setItem('qiniu_pending_content_id', data.contentId)
-      
-      // 发布时再次同步内容到扩展（确保最新）
       syncToExtension({ ...content, id: data.contentId, timestamp: Date.now() })
 
       alert('已生成发布链接，请点击链接前往各平台')
@@ -312,11 +298,6 @@ export default function Editor() {
     return (platform as any)?.submissionTypes || ['article']
   }
 
-  const getSubmissionTypeName = (platformId: string, type: string): string => {
-    const platform = platforms.find(p => p.id === platformId)
-    return (platform as any)?.submissionTypeNames?.[type] || type
-  }
-
   const addTag = () => {
     if (!tagInput.trim()) return
     if (content.tags?.includes(tagInput.trim())) return
@@ -337,68 +318,63 @@ export default function Editor() {
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-white animate-spin" />
+      <div className="min-h-screen bg-[#FFFDF5] flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="w-12 h-12 text-black animate-spin" strokeWidth={3} />
+          <span className="font-bold uppercase tracking-wider">加载中...</span>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen gradient-bg">
-      <header className="bg-black/20 backdrop-blur-xl border-b border-white/10 sticky top-0 z-50">
+    <div className="min-h-screen bg-[#FFFDF5] font-bold">
+      {/* Header */}
+      <header className="bg-[#FFD93D] border-b-4 border-black sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <button
               onClick={() => navigate('/dashboard')}
-              className="p-2 rounded-lg bg-white/10 hover:bg-white/20 transition-colors text-white/70 hover:text-white"
+              className="p-3 bg-white border-4 border-black shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all"
             >
-              <ArrowLeft className="w-5 h-5" />
+              <ArrowLeft className="w-6 h-6" strokeWidth={3} />
             </button>
             <div>
-              <h1 className="text-xl font-bold text-white">
+              <h1 className="text-2xl font-black uppercase tracking-tight">
                 {isEditing ? '编辑内容' : '新建内容'}
               </h1>
-              <p className="text-white/50 text-sm">创作并发布到多个平台</p>
+              <p className="text-sm text-black/60 uppercase tracking-wider">创作并发布到多个平台</p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            <GlassButton variant="secondary" onClick={handlePreview} disabled={previewing}>
-              {previewing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Eye className="w-4 h-4" />
-              )}
-              预览适配
-            </GlassButton>
+            <NeoButton variant="white" size="sm" onClick={handlePreview} disabled={previewing}>
+              {previewing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
+              预览
+            </NeoButton>
 
-            <GlassButton variant="secondary" onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
+            <NeoButton variant="secondary" size="sm" onClick={handleSave} disabled={saving}>
+              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
               保存
-            </GlassButton>
+            </NeoButton>
 
-            <GlassButton onClick={handlePublish} disabled={publishing}>
-              {publishing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-              一键发布
-            </GlassButton>
+            <NeoButton onClick={handlePublish} disabled={publishing}>
+              {publishing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              发布
+            </NeoButton>
           </div>
         </div>
       </header>
 
+      {/* Main Content */}
       <main className="max-w-7xl mx-auto px-6 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
-            <GlassCard>
-              <div className="p-6 space-y-4">
-                <GlassInput
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Left Column - Editor */}
+          <div className="lg:col-span-2 space-y-8">
+            {/* Title & Body Card */}
+            <NeoCard bgColor="white">
+              <div className="p-6 space-y-6">
+                <NeoInput
                   label="标题"
                   placeholder="输入文章标题..."
                   value={content.title || ''}
@@ -406,22 +382,29 @@ export default function Editor() {
                 />
 
                 <div>
-                  <label className="block text-sm font-medium text-white/80 mb-1.5">正文内容</label>
-                  <RichEditor
-                    content={content.body || ''}
-                    onChange={(body) => setContent((prev) => ({ ...prev, body }))}
-                  />
+                  <label className="block text-sm font-bold uppercase tracking-wider text-black mb-2">
+                    正文内容
+                  </label>
+                  <div className="border-4 border-black bg-white">
+                    <RichEditor
+                      content={content.body || ''}
+                      onChange={(body) => setContent((prev) => ({ ...prev, body }))}
+                    />
+                  </div>
                 </div>
               </div>
-            </GlassCard>
+            </NeoCard>
 
-            {/* 媒体上传区域 */}
-            <GlassCard>
+            {/* Media Upload Card */}
+            <NeoCard bgColor="yellow">
               <div className="p-6 space-y-4">
                 <div className="flex items-center justify-between">
-                  <label className="block text-sm font-medium text-white/80">上传媒体</label>
-                  <span className="text-xs text-white/50">
-                    当前类型: <span className="text-pink-400 capitalize">{content.media_type}</span>
+                  <label className="text-sm font-bold uppercase tracking-wider text-black flex items-center gap-2">
+                    <Zap className="w-5 h-5" strokeWidth={3} />
+                    上传媒体
+                  </label>
+                  <span className="px-3 py-1 bg-black text-white text-xs font-bold uppercase">
+                    {content.media_type}
                   </span>
                 </div>
 
@@ -437,50 +420,50 @@ export default function Editor() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploading}
-                  className="w-full p-6 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors flex flex-col items-center gap-2 text-white/60 hover:text-white/80"
+                  className="w-full p-8 bg-white border-4 border-black border-dashed hover:bg-[#C4B5FD] hover:border-solid transition-all flex flex-col items-center gap-3"
                 >
                   {uploading ? (
-                    <Loader2 className="w-8 h-8 animate-spin" />
+                    <Loader2 className="w-10 h-10 animate-spin" strokeWidth={3} />
                   ) : (
-                    <Upload className="w-8 h-8" />
+                    <Upload className="w-10 h-10" strokeWidth={3} />
                   )}
-                  <span>{uploading ? '上传中...' : '点击或拖拽文件到此处上传'}</span>
-                  <span className="text-xs text-white/40">支持视频、图片、音频文件</span>
+                  <span className="font-bold uppercase tracking-wide">
+                    {uploading ? '上传中...' : '点击或拖拽上传'}
+                  </span>
+                  <span className="text-xs text-black/50">支持视频、图片、音频文件</span>
                 </button>
 
-                {/* 已上传文件列表 */}
+                {/* Uploaded Files */}
                 {content.media_files && content.media_files.length > 0 && (
-                  <div className="space-y-2">
-                    <label className="block text-sm font-medium text-white/80">已上传文件</label>
+                  <div className="space-y-3">
+                    <span className="text-sm font-bold uppercase tracking-wider text-black">已上传文件</span>
                     {content.media_files.map((file) => (
                       <div
                         key={file.id}
-                        className={`flex items-center gap-3 p-3 rounded-lg border ${
-                          content.thumbnail === file.id
-                            ? 'border-pink-400 bg-pink-500/10'
-                            : 'border-white/20 bg-white/5'
+                        className={`flex items-center gap-3 p-4 bg-white border-4 border-black ${
+                          content.thumbnail === file.id ? 'shadow-[4px_4px_0px_0px_#FF6B6B]' : ''
                         }`}
                       >
                         {file.type === 'video' ? (
-                          <Film className="w-5 h-5 text-pink-400" />
+                          <Film className="w-6 h-6 text-pink-600" strokeWidth={3} />
                         ) : file.type === 'image' ? (
-                          <Image className="w-5 h-5 text-green-400" />
+                          <Image className="w-6 h-6 text-green-600" strokeWidth={3} />
                         ) : (
-                          <Video className="w-5 h-5 text-blue-400" />
+                          <Video className="w-6 h-6 text-blue-600" strokeWidth={3} />
                         )}
                         <div className="flex-1 min-w-0">
-                          <p className="text-white text-sm truncate">{file.filename}</p>
-                          <p className="text-white/50 text-xs">
+                          <p className="font-bold truncate">{file.filename}</p>
+                          <p className="text-sm text-black/50">
                             {(file.size / 1024 / 1024).toFixed(2)} MB
                           </p>
                         </div>
                         {file.type === 'image' && (
                           <button
                             onClick={() => handleThumbnailSelect(file.id)}
-                            className={`px-2 py-1 text-xs rounded ${
+                            className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black ${
                               content.thumbnail === file.id
-                                ? 'bg-pink-500 text-white'
-                                : 'bg-white/10 text-white/70 hover:bg-white/20'
+                                ? 'bg-[#FF6B6B] text-white'
+                                : 'bg-white hover:bg-[#FFD93D]'
                             }`}
                           >
                             封面
@@ -488,30 +471,34 @@ export default function Editor() {
                         )}
                         <button
                           onClick={() => removeMediaFile(file.id)}
-                          className="p-1 text-white/50 hover:text-red-400"
+                          className="p-2 bg-[#FF6B6B] border-2 border-black hover:bg-white transition-colors"
                         >
-                          <X className="w-4 h-4" />
+                          <X className="w-4 h-4" strokeWidth={3} />
                         </button>
                       </div>
                     ))}
                   </div>
                 )}
               </div>
-            </GlassCard>
+            </NeoCard>
 
-            <GlassCard>
+            {/* Tags Card */}
+            <NeoCard bgColor="muted">
               <div className="p-6">
-                <label className="block text-sm font-medium text-white/80 mb-3">标签</label>
-                <div className="flex flex-wrap gap-2 mb-3">
+                <label className="block text-sm font-bold uppercase tracking-wider text-black mb-3 flex items-center gap-2">
+                  <Star className="w-5 h-5" strokeWidth={3} />
+                  标签
+                </label>
+                <div className="flex flex-wrap gap-2 mb-4">
                   {content.tags?.map((tag) => (
                     <span
                       key={tag}
-                      className="px-3 py-1 rounded-full bg-white/10 border border-white/20 text-white/80 text-sm flex items-center gap-2"
+                      className="px-4 py-2 bg-white border-4 border-black font-bold uppercase text-sm flex items-center gap-2 shadow-[4px_4px_0px_0px_#000]"
                     >
                       #{tag}
                       <button
                         onClick={() => removeTag(tag)}
-                        className="text-white/50 hover:text-white"
+                        className="text-black/50 hover:text-black"
                       >
                         ×
                       </button>
@@ -524,58 +511,65 @@ export default function Editor() {
                     value={tagInput}
                     onChange={(e) => setTagInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                    placeholder="添加标签后按回车"
-                    className="flex-1 px-3 py-2 rounded-lg bg-white/10 border border-white/20 text-white placeholder-white/40 outline-none focus:border-white/40"
+                    placeholder="输入标签后按回车"
+                    className="flex-1 h-12 px-4 bg-white border-4 border-black text-black font-bold placeholder:text-black/40 focus:bg-[#FFD93D] focus:shadow-[4px_4px_0px_0px_#000] focus:outline-none"
                   />
-                  <GlassButton variant="secondary" size="sm" onClick={addTag}>
+                  <NeoButton variant="primary" size="sm" onClick={addTag}>
                     添加
-                  </GlassButton>
+                  </NeoButton>
                 </div>
               </div>
-            </GlassCard>
+            </NeoCard>
           </div>
 
-          <div className="space-y-6">
-            <GlassCard>
+          {/* Right Column - Platform Selection */}
+          <div className="space-y-8">
+            <NeoCard bgColor="black">
               <div className="p-6">
-                <label className="block text-sm font-medium text-white/80 mb-3">选择发布平台</label>
+                <label className="block text-sm font-bold uppercase tracking-wider text-white mb-4 flex items-center gap-2">
+                  <Zap className="w-5 h-5 text-[#FFD93D]" strokeWidth={3} />
+                  选择发布平台
+                </label>
                 <div className="space-y-3">
                   {platforms.map((platform) => {
                     const isSelected = content.platforms?.includes(platform.id)
                     const hasMultipleTypes = (platform as any).submissionTypes?.length > 1
+                    const colors = platformColors[platform.id] || { bg: 'bg-gray-400', border: 'border-gray-600', text: 'text-gray-800' }
 
                     return (
                       <div key={platform.id} className="space-y-2">
                         <button
                           onClick={() => togglePlatform(platform.id)}
                           className={`
-                            w-full p-4 rounded-xl border transition-all flex items-center gap-3
-                            ${isSelected
-                              ? platformColors[platform.id]
-                              : 'border-white/20 bg-white/5 hover:bg-white/10'
+                            w-full p-4 border-4 border-black flex items-center gap-3 font-bold uppercase transition-all
+                            ${isSelected 
+                              ? `${colors.bg} shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none` 
+                              : 'bg-white hover:bg-gray-100'
                             }
                           `}
                         >
-                          <span className={platformTextColors[platform.id] || 'text-white'}>
+                          <span className={isSelected ? '' : colors.text}>
                             {platformIcons[platform.id]}
                           </span>
-                          <span className="text-white font-medium">{platform.name}</span>
+                          <span className={isSelected ? 'text-black' : ''}>
+                            {platform.name}
+                          </span>
                           {isSelected && (
-                            <CheckCircle className="w-5 h-5 text-green-400 ml-auto" />
+                            <CheckCircle className="w-6 h-6 text-black ml-auto" strokeWidth={3} />
                           )}
                         </button>
 
-                        {/* 发布类型选择 */}
+                        {/* Submission Types */}
                         {isSelected && hasMultipleTypes && (
-                          <div className="flex flex-wrap gap-2 pl-4">
+                          <div className="flex flex-wrap gap-2 pl-2">
                             {(platform as any).submissionTypes.map((type: string) => (
                               <button
                                 key={type}
                                 onClick={() => handleSubmissionTypeChange(platform.id, type)}
-                                className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                                className={`px-3 py-1 text-xs font-bold uppercase border-2 border-black transition-all ${
                                   submissionTypes[platform.id] === type || (!submissionTypes[platform.id] && type === 'article')
-                                    ? 'bg-pink-500 text-white'
-                                    : 'bg-white/10 text-white/70 hover:bg-white/20'
+                                    ? 'bg-[#FF6B6B] text-white'
+                                    : 'bg-white hover:bg-[#C4B5FD]'
                                 }`}
                               >
                                 {(platform as any).submissionTypeNames?.[type] || type}
@@ -588,41 +582,39 @@ export default function Editor() {
                   })}
                 </div>
               </div>
-            </GlassCard>
+            </NeoCard>
 
+            {/* Platform Preview */}
             {content.platformContent && Object.keys(content.platformContent).length > 0 && (
-              <GlassCard>
+              <NeoCard bgColor="white">
                 <div className="p-6">
-                  <h3 className="text-white font-medium mb-4">平台适配预览</h3>
+                  <h3 className="font-black uppercase tracking-wider mb-4 flex items-center gap-2">
+                    <Eye className="w-5 h-5" strokeWidth={3} />
+                    平台预览
+                  </h3>
                   <div className="space-y-4">
                     {content.platforms?.map((platformId) => {
                       const pc = content.platformContent?.[platformId]
                       if (!pc) return null
                       const platform = platforms.find((p) => p.id === platformId)
+                      const colors = platformColors[platformId] || { bg: 'bg-gray-400', border: 'border-gray-600', text: 'text-gray-800' }
 
                       return (
                         <div
                           key={platformId}
-                          className={`p-4 rounded-xl border ${platformColors[platformId] || 'border-white/20'}`}
+                          className={`p-4 border-4 border-black ${colors.bg}`}
                         >
                           <div className="flex items-center gap-2 mb-2">
-                            <span className={platformTextColors[platformId] || 'text-white'}>
-                              {platformIcons[platformId]}
-                            </span>
-                            <span className="text-white font-medium">{platform?.name}</span>
-                            {submissionTypes[platformId] && (
-                              <span className="text-xs text-white/50 ml-1">
-                                ({(platform as any)?.submissionTypeNames?.[submissionTypes[platformId]]})
-                              </span>
-                            )}
+                            <span>{platformIcons[platformId]}</span>
+                            <span className="font-bold uppercase">{platform?.name}</span>
                           </div>
-                          <h4 className="text-white/90 font-medium mb-2">{pc.adaptedTitle}</h4>
-                          <p className="text-white/60 text-sm line-clamp-3 mb-2">{pc.adaptedBody}</p>
-                          <div className="flex items-center gap-4 text-xs text-white/50">
+                          <h4 className="font-bold mb-2">{pc.adaptedTitle}</h4>
+                          <p className="text-sm text-black/70 line-clamp-3 mb-2">{pc.adaptedBody}</p>
+                          <div className="flex items-center gap-4 text-xs font-bold">
                             <span>{pc.characterCount} 字</span>
                             {pc.warnings.length > 0 && (
-                              <span className="flex items-center gap-1 text-amber-400">
-                                <AlertCircle className="w-3 h-3" />
+                              <span className="flex items-center gap-1 text-red-700">
+                                <AlertCircle className="w-4 h-4" strokeWidth={3} />
                                 {pc.warnings[0]}
                               </span>
                             )}
@@ -632,49 +624,46 @@ export default function Editor() {
                     })}
                   </div>
                 </div>
-              </GlassCard>
+              </NeoCard>
             )}
 
+            {/* Publish Results */}
             {showResults && publishResults.length > 0 && (
-              <GlassCard>
-                <div className="p-6">
-                  <h3 className="text-white font-medium mb-4 flex items-center gap-2">
-                    <ExternalLink className="w-5 h-5 text-blue-400" />
-                    发布链接 - 点击前往各平台
+              <NeoCard bgColor="yellow">
+                <div className="p-6 space-y-4">
+                  <h3 className="font-black uppercase tracking-wider flex items-center gap-2">
+                    <ExternalLink className="w-5 h-5" strokeWidth={3} />
+                    发布链接
                   </h3>
                   <div className="space-y-3">
                     {publishResults.map((result: any, index: number) => (
                       <div
                         key={index}
-                        className="p-4 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 transition-colors"
+                        className="p-4 bg-white border-4 border-black"
                       >
                         <div className="flex items-center gap-3">
-                          <span className="text-2xl">{result.icon}</span>
+                          <span className="text-3xl">{result.icon}</span>
                           <div className="flex-1">
-                            <span className="text-white font-medium">{result.name}</span>
-                            {result.submissionType && (
-                              <span className="text-white/50 text-sm ml-2">({result.submissionType})</span>
-                            )}
+                            <span className="font-bold">{result.name}</span>
                           </div>
                           <a
                             href={result.url}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+                            className="px-4 py-2 bg-[#FF6B6B] border-4 border-black font-bold uppercase text-sm shadow-[4px_4px_0px_0px_#000] hover:translate-x-[2px] hover:translate-y-[2px] hover:shadow-none transition-all flex items-center gap-2"
                           >
-                            前往发布
-                            <ExternalLink className="w-4 h-4" />
+                            前往
+                            <ExternalLink className="w-4 h-4" strokeWidth={3} />
                           </a>
                         </div>
-                        <p className="text-white/50 text-xs mt-2">点击后在平台上点击「七」按钮一键填入内容</p>
                       </div>
                     ))}
                   </div>
-                  <p className="text-white/60 text-sm mt-4 text-center">
-                    请在每个平台编辑器中点击浏览器工具栏的「七牛」扩展图标
+                  <p className="text-sm text-black/60 font-bold uppercase">
+                    在平台上点击「七」按钮一键填入
                   </p>
                 </div>
-              </GlassCard>
+              </NeoCard>
             )}
           </div>
         </div>

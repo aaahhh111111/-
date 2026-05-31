@@ -4,48 +4,79 @@
   right: 20px;
   transform: translateY(-50%);
   z-index: 2147483647;
-  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
   animation: qiniu-fade-in 0.3s ease;
 }
 
-.qiniu-logo {
+.qiniu-btn {
   width: 50px;
   height: 50px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 24px;
+  font-size: 14px;
   font-weight: bold;
-  box-shadow: 0 4px 20px rgba(102, 126, 234, 0.5);
+  cursor: pointer;
   transition: all 0.3s ease;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  position: relative;
 }
 
-.qiniu-logo:hover {
+.qiniu-btn:hover {
   transform: scale(1.1);
-  box-shadow: 0 6px 30px rgba(102, 126, 234, 0.7);
+}
+
+.qiniu-btn:hover .qiniu-tooltip {
+  opacity: 1;
+  right: 60px;
+}
+
+.qiniu-btn-title {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.qiniu-btn-body {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.qiniu-btn-tags {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.qiniu-btn-file {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.qiniu-btn-all {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  width: 60px;
+  height: 60px;
+  font-size: 16px;
 }
 
 .qiniu-tooltip {
   position: absolute;
-  right: 60px;
+  right: 65px;
   top: 50%;
   transform: translateY(-50%);
   background: rgba(0, 0, 0, 0.85);
   color: white;
-  padding: 8px 16px;
+  padding: 8px 14px;
   border-radius: 8px;
-  font-size: 14px;
+  font-size: 13px;
   white-space: nowrap;
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
+  z-index: 2147483648;
 }
 
-#qiniu-fill-btn:hover .qiniu-tooltip {
-  opacity: 1;
+.qiniu-btn-all:hover .qiniu-tooltip {
+  right: 70px;
 }
 
 @keyframes qiniu-fade-in {
