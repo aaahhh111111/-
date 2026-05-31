@@ -1,7 +1,7 @@
 ## 项目演示视频
 <center>
 <video width="600" controls>
-  <source src="https://github.com/aaahhh111111/-/issues/2#issue-4558440667" type="video/mp4">
+  <source src="https://github.com/aaahhh111111/-/issues/2#issue-4558440667/0dba96ae5f4eb6d1b82e977a54a63e76.mp4" type="video/mp4">
 </video>
 </center>
 # 多平台内容发布工具
