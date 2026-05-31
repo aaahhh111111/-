@@ -1,9 +1,10 @@
 ## 项目演示视频
 <center>
 <video width="600" controls>
-  <source src="https://github.com/aaahhh111111/-/issues/2#issue-4558440667/0dba96ae5f4eb6d1b82e977a54a63e76.mp4" type="video/mp4">
+  <source src="https://user-images.githubusercontent.com/213208978/600633827-46428234-10ab-44e0-bf50-eccd5979aa2a.mp4" type="video/mp4">
 </video>
 </center>
+
 # 多平台内容发布工具
 
 一款帮助创作者在微信公众号、知乎、B站、小红书等平台同步发布内容的工具，自动适配各平台格式与风格。
