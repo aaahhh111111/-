@@ -1,5 +1,0 @@
-export { WeChatPlatform } from './wechat'
-export { ZhihuPlatform } from './zhihu'
-export { XiaohongshuPlatform } from './xiaohongshu'
-export { BasePlatform } from './BasePlatform'
-export type { PlatformAutomation } from './BasePlatform'

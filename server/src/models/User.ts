@@ -1,4 +1,4 @@
-import { db } from '../database/sqlite'
+import { users } from '../database/json'
 import { v4 as uuidv4 } from 'uuid'
 import bcrypt from 'bcryptjs'
 
@@ -20,27 +20,27 @@ export const UserModel = {
   create: (input: UserCreateInput): User => {
     const id = uuidv4()
     const hashedPassword = bcrypt.hashSync(input.password, 10)
-    const stmt = db.prepare(`
-      INSERT INTO users (id, username, email, password)
-      VALUES (?, ?, ?, ?)
-    `)
-    stmt.run(id, input.username, input.email, hashedPassword)
-    return { ...input, id, password: hashedPassword, created_at: new Date().toISOString() }
+    const user: User = {
+      id,
+      username: input.username,
+      email: input.email,
+      password: hashedPassword,
+      created_at: new Date().toISOString()
+    }
+    users.create(user)
+    return user
   },
 
   findByEmail: (email: string): User | undefined => {
-    const stmt = db.prepare('SELECT * FROM users WHERE email = ?')
-    return stmt.get(email) as User | undefined
+    return users.findByEmail(email)
   },
 
   findById: (id: string): User | undefined => {
-    const stmt = db.prepare('SELECT * FROM users WHERE id = ?')
-    return stmt.get(id) as User | undefined
+    return users.findById(id)
   },
 
   findByUsername: (username: string): User | undefined => {
-    const stmt = db.prepare('SELECT * FROM users WHERE username = ?')
-    return stmt.get(username) as User | undefined
+    return users.findByUsername(username)
   },
 
   verifyPassword: (user: User, password: string): boolean => {

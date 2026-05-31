@@ -1,4 +1,4 @@
-import { db } from '../database/sqlite'
+import { contents } from '../database/json'
 import { v4 as uuidv4 } from 'uuid'
 
 export interface PlatformContent {
@@ -54,26 +54,7 @@ export const ContentModel = {
   create: (input: ContentCreateInput): Content => {
     const id = uuidv4()
     const now = new Date().toISOString()
-    const stmt = db.prepare(`
-      INSERT INTO contents (id, user_id, title, body, tags, images, media_type, media_files, thumbnail, platforms, platform_content, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `)
-    stmt.run(
-      id,
-      input.user_id,
-      input.title,
-      input.body || '',
-      JSON.stringify(input.tags || []),
-      JSON.stringify(input.images || []),
-      input.media_type || 'text',
-      JSON.stringify(input.media_files || []),
-      input.thumbnail || null,
-      JSON.stringify(input.platforms || []),
-      JSON.stringify(input.platform_content || {}),
-      now,
-      now
-    )
-    return {
+    const content: Content = {
       id,
       user_id: input.user_id,
       title: input.title,
@@ -88,74 +69,41 @@ export const ContentModel = {
       created_at: now,
       updated_at: now,
     }
+    contents.create(content)
+    return content
   },
 
   findByUserId: (userId: string): Content[] => {
-    const stmt = db.prepare('SELECT * FROM contents WHERE user_id = ? ORDER BY updated_at DESC')
-    const rows = stmt.all(userId) as any[]
-    return rows.map(ContentModel.mapRowToContent)
+    return contents.findByUserId(userId)
   },
 
   findById: (id: string): Content | undefined => {
-    const stmt = db.prepare('SELECT * FROM contents WHERE id = ?')
-    const row = stmt.get(id) as any
-    return row ? ContentModel.mapRowToContent(row) : undefined
+    return contents.findById(id)
   },
 
   update: (id: string, updates: Partial<ContentCreateInput>): Content | undefined => {
-    const existing = ContentModel.findById(id)
+    const existing = contents.findById(id)
     if (!existing) return undefined
 
     const now = new Date().toISOString()
-    const stmt = db.prepare(`
-      UPDATE contents SET
-        title = ?,
-        body = ?,
-        tags = ?,
-        images = ?,
-        media_type = ?,
-        media_files = ?,
-        thumbnail = ?,
-        platforms = ?,
-        platform_content = ?,
-        updated_at = ?
-      WHERE id = ?
-    `)
-    stmt.run(
-      updates.title ?? existing.title,
-      updates.body ?? existing.body,
-      JSON.stringify(updates.tags ?? existing.tags),
-      JSON.stringify(updates.images ?? existing.images),
-      updates.media_type ?? existing.media_type,
-      JSON.stringify(updates.media_files ?? existing.media_files),
-      updates.thumbnail ?? existing.thumbnail ?? null,
-      JSON.stringify(updates.platforms ?? existing.platforms),
-      JSON.stringify(updates.platform_content ?? existing.platform_content),
-      now,
-      id
-    )
-    return ContentModel.findById(id)
+    const updated: Content = {
+      ...existing,
+      title: updates.title ?? existing.title,
+      body: updates.body ?? existing.body,
+      tags: updates.tags ?? existing.tags,
+      images: updates.images ?? existing.images,
+      media_type: updates.media_type ?? existing.media_type,
+      media_files: updates.media_files ?? existing.media_files,
+      thumbnail: updates.thumbnail ?? existing.thumbnail,
+      platforms: updates.platforms ?? existing.platforms,
+      platform_content: updates.platform_content ?? existing.platform_content,
+      updated_at: now,
+    }
+    contents.update(id, updated)
+    return updated
   },
 
   delete: (id: string): boolean => {
-    const stmt = db.prepare('DELETE FROM contents WHERE id = ?')
-    const result = stmt.run(id)
-    return result.changes > 0
+    return contents.delete(id)
   },
-
-  mapRowToContent: (row: any): Content => ({
-    id: row.id,
-    user_id: row.user_id,
-    title: row.title,
-    body: row.body,
-    tags: JSON.parse(row.tags || '[]'),
-    images: JSON.parse(row.images || '[]'),
-    media_type: row.media_type || 'text',
-    media_files: JSON.parse(row.media_files || '[]'),
-    thumbnail: row.thumbnail || undefined,
-    platforms: JSON.parse(row.platforms || '[]'),
-    platform_content: JSON.parse(row.platform_content || '{}'),
-    created_at: row.created_at,
-    updated_at: row.updated_at,
-  }),
 }

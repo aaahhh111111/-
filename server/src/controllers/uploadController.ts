@@ -1,10 +1,26 @@
 import { Router, Request, Response } from 'express'
 import multer from 'multer'
 import path from 'path'
+import fs from 'fs'
 import { v4 as uuidv4 } from 'uuid'
-import { saveUploadedFile, getMediaType } from '../services/fileStorage'
 
 const router = Router()
+
+// 确保上传目录存在
+const uploadsDir = path.join(process.cwd(), 'uploads')
+;['images', 'videos', 'audio'].forEach(dir => {
+  const dirPath = path.join(uploadsDir, dir)
+  if (!fs.existsSync(dirPath)) {
+    fs.mkdirSync(dirPath, { recursive: true })
+  }
+})
+
+function getMediaType(mimetype: string): 'image' | 'video' | 'audio' | null {
+  if (mimetype.startsWith('image/')) return 'image'
+  if (mimetype.startsWith('video/')) return 'video'
+  if (mimetype.startsWith('audio/')) return 'audio'
+  return null
+}
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
@@ -12,7 +28,7 @@ const storage = multer.diskStorage({
     let subDir = 'images'
     if (mediaType === 'video') subDir = 'videos'
     else if (mediaType === 'audio') subDir = 'audio'
-    cb(null, path.join(process.cwd(), 'uploads', subDir))
+    cb(null, path.join(uploadsDir, subDir))
   },
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname)
@@ -43,7 +59,16 @@ router.post('/', upload.single('file'), async (req: Request, res: Response) => {
       return
     }
 
-    const mediaFile = await saveUploadedFile(req.file)
+    const mediaType = getMediaType(req.file.mimetype)
+    const mediaFile = {
+      id: uuidv4(),
+      type: mediaType,
+      filename: req.file.originalname,
+      local_path: req.file.path,
+      url: `/uploads/${mediaType}s/${req.file.filename}`,
+      size: req.file.size,
+      mime_type: req.file.mimetype
+    }
     res.json(mediaFile)
   } catch (error: any) {
     res.status(400).json({ error: error.message })
@@ -59,7 +84,18 @@ router.post('/multiple', upload.array('files', 10), async (req: Request, res: Re
       return
     }
 
-    const mediaFiles = await Promise.all(files.map(f => saveUploadedFile(f)))
+    const mediaFiles = files.map(f => {
+      const mediaType = getMediaType(f.mimetype)
+      return {
+        id: uuidv4(),
+        type: mediaType,
+        filename: f.originalname,
+        local_path: f.path,
+        url: `/uploads/${mediaType}s/${f.filename}`,
+        size: f.size,
+        mime_type: f.mimetype
+      }
+    })
     res.json(mediaFiles)
   } catch (error: any) {
     res.status(400).json({ error: error.message })

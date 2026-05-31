@@ -1,9 +1,11 @@
 import { Router, Response } from 'express'
 import { ContentModel } from '../models/Content'
-import { platformConfigs } from '../playwright/config'
 import type { AuthRequest } from '../middleware/auth'
 
 const router = Router()
+
+// 空的 config（不再使用）
+const platformConfigs: Record<string, any> = {}
 
 // 获取带 contentId 的平台链接
 function getPlatformUrl(platformId: string, contentId: string, submissionType?: string): string {
