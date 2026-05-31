@@ -1,11 +1,11 @@
 import { Page, BrowserContext } from 'playwright'
 import { BasePlatform } from './BasePlatform'
-import { ContentData, platformConfigs } from '../config'
+import { ContentData, getPlatformEditorUrl } from '../config'
 
 export class ZhihuPlatform extends BasePlatform {
   platformId = 'zhihu'
   platformName = '知乎'
-  editorUrl = platformConfigs.zhihu.editorUrl
+  editorUrl = getPlatformEditorUrl('zhihu')
 
   async getLoginStatus(context: BrowserContext): Promise<boolean> {
     try {
@@ -24,8 +24,9 @@ export class ZhihuPlatform extends BasePlatform {
 
   async navigateToEditor(page: Page): Promise<void> {
     console.log('正在跳转到知乎写文章页面...')
-    await page.goto(this.editorUrl, { waitUntil: 'networkidle', timeout: 30000 })
-    await this.delay(3000)
+    await page.goto(this.editorUrl, { waitUntil: 'networkidle', timeout: 60000 })
+    await page.waitForLoadState('domcontentloaded')
+    await this.delay(5000)
     console.log('当前URL:', page.url())
   }
 

@@ -14,6 +14,7 @@ export const db: DatabaseType = new Database(dbPath)
 db.pragma('journal_mode = WAL')
 
 export function initializeDatabase() {
+  // 创建表（不包含新列）
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -39,6 +40,24 @@ export function initializeDatabase() {
 
     CREATE INDEX IF NOT EXISTS idx_contents_user_id ON contents(user_id);
   `)
+
+  // 迁移：添加新列（如果不存在）
+  const migrationQueries = [
+    "ALTER TABLE contents ADD COLUMN media_type TEXT DEFAULT 'text'",
+    "ALTER TABLE contents ADD COLUMN media_files TEXT DEFAULT '[]'",
+    "ALTER TABLE contents ADD COLUMN thumbnail TEXT",
+  ]
+
+  for (const query of migrationQueries) {
+    try {
+      db.exec(query)
+    } catch (error: any) {
+      // 忽略 "duplicate column name" 错误
+      if (!error.message.includes('duplicate column name')) {
+        console.error('Migration error:', error.message)
+      }
+    }
+  }
 
   console.log('Database initialized successfully')
 }

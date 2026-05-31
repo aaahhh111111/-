@@ -1,20 +1,28 @@
-import { chromium, firefox, Browser, BrowserContext, Page } from 'playwright'
-import { ContentData, LaunchResult, platformConfigs, STORAGE_DIR } from '../playwright/config'
+import { chromium, BrowserContext } from 'playwright'
+import { ContentData, LaunchResult, platformConfigs } from '../playwright/config'
 import {
   WeChatPlatform,
   ZhihuPlatform,
   XiaohongshuPlatform,
-  BilibiliPlatform,
   PlatformAutomation,
 } from '../playwright/platforms'
+import { getBilibiliPlatform } from '../playwright/platforms/bilibili'
 import fs from 'fs'
-import path from 'path'
 
-const platforms: Record<string, PlatformAutomation> = {
-  wechat: new WeChatPlatform(),
-  zhihu: new ZhihuPlatform(),
-  xiaohongshu: new XiaohongshuPlatform(),
-  bilibili: new BilibiliPlatform(),
+function createPlatformInstance(platformId: string, submissionType?: string): PlatformAutomation | null {
+  if (platformId === 'bilibili' && submissionType) {
+    return getBilibiliPlatform(submissionType)
+  }
+
+  const platformMap: Record<string, () => PlatformAutomation> = {
+    wechat: () => new WeChatPlatform(),
+    zhihu: () => new ZhihuPlatform(),
+    xiaohongshu: () => new XiaohongshuPlatform(),
+    bilibili: () => getBilibiliPlatform('article'),
+  }
+
+  const createFn = platformMap[platformId]
+  return createFn ? createFn() : null
 }
 
 export interface PlatformAuthStatus {
@@ -24,40 +32,122 @@ export interface PlatformAuthStatus {
   needsLogin: boolean
 }
 
-function createBrowser() {
-  return chromium.launch({
-    headless: false,
-    args: ['--start-maximized'],
-    channel: 'msedge',
-  })
+async function launchSinglePlatform(
+  platformId: string,
+  submissionType: string | undefined,
+  content: ContentData,
+  contentId: string
+): Promise<LaunchResult> {
+  const platform = createPlatformInstance(platformId, submissionType)
+  const config = platformConfigs[platformId]
+
+  if (!platform || !config) {
+    return {
+      success: false,
+      platform: platformId,
+      url: '',
+      error: '平台未配置',
+    }
+  }
+
+  try {
+    const browser = await chromium.launch({
+      headless: false,
+      args: ['--start-maximized'],
+      channel: 'msedge',
+    })
+
+    let context: BrowserContext
+
+    if (fs.existsSync(config.storageFile)) {
+      context = await browser.newContext({
+        storageState: config.storageFile,
+      })
+    } else {
+      context = await browser.newContext()
+    }
+
+    const page = await context.newPage()
+    await page.setViewportSize({ width: 1400, height: 900 })
+
+    // 获取编辑器 URL 并添加 contentId 参数
+    let editorUrl = platform.editorUrl || config.submissionTypes[0]?.editorUrl || ''
+    
+    // 如果 URL 已有查询参数，添加 &qiniu_cid
+    // 如果没有，添加 ?qiniu_cid
+    const separator = editorUrl.includes('?') ? '&' : '?'
+    const urlWithCid = `${editorUrl}${separator}qiniu_cid=${contentId}`
+    
+    console.log(`打开页面并传递 contentId: ${contentId}`)
+    await page.goto(urlWithCid, { waitUntil: 'networkidle', timeout: 60000 })
+    await page.waitForLoadState('domcontentloaded')
+    await page.waitForTimeout(3000)
+
+    await platform.fillContent(page, content)
+
+    // 保存登录状态
+    if (!fs.existsSync(config.storageFile)) {
+      await context.storageState({ path: config.storageFile })
+      console.log(`已保存 ${config.name} 登录状态到 ${config.storageFile}`)
+    }
+
+    const currentUrl = page.url()
+    console.log(`${config.name} 编辑器已打开: ${currentUrl}`)
+
+    return {
+      success: true,
+      platform: platformId,
+      url: currentUrl,
+    }
+
+  } catch (error: any) {
+    return {
+      success: false,
+      platform: platformId,
+      url: '',
+      error: error.message || '未知错误',
+    }
+  }
 }
 
-function createBrowserForAuth() {
-  return chromium.launch({ 
-    headless: false,
-    channel: 'msedge',
-  })
-}
+export async function launchPlatforms(
+  content: ContentData,
+  platformIds: string[],
+  submissionTypes?: Record<string, string>,
+  contentId?: string
+): Promise<LaunchResult[]> {
+  console.log(`同时启动 ${platformIds.length} 个平台...`)
+  console.log(`Content ID: ${contentId}`)
 
-function createBrowserForStatus() {
-  return chromium.launch({ headless: false, channel: 'msedge' })
+  const promises = platformIds.map(platformId => {
+    const submissionType = submissionTypes?.[platformId]
+    return launchSinglePlatform(platformId, submissionType, content, contentId || '')
+  })
+
+  const results = await Promise.all(promises)
+
+  const successCount = results.filter(r => r.success).length
+  console.log(`成功启动 ${successCount}/${platformIds.length} 个平台`)
+
+  return results
 }
 
 export async function getAuthStatus(): Promise<PlatformAuthStatus[]> {
   const results: PlatformAuthStatus[] = []
 
   try {
-    const browser = await createBrowserForStatus()
-    const context = await browser.newContext()
+    const browser = await chromium.launch({ headless: false, channel: 'msedge' })
 
-    for (const [platformId, platform] of Object.entries(platforms)) {
+    for (const platformId of Object.keys(platformConfigs)) {
       const config = platformConfigs[platformId]
+      const platform = createPlatformInstance(platformId)
+      if (!platform) continue
+
       let isAuthenticated = false
       let needsLogin = true
 
       if (fs.existsSync(config.storageFile)) {
         try {
-          await context.close()
           const savedContext = await browser.newContext({
             storageState: config.storageFile,
           })
@@ -83,7 +173,6 @@ export async function getAuthStatus(): Promise<PlatformAuthStatus[]> {
       })
     }
 
-    await context.close()
     await browser.close()
   } catch (error) {
     console.error('Failed to check auth status:', error)
@@ -92,103 +181,20 @@ export async function getAuthStatus(): Promise<PlatformAuthStatus[]> {
   return results
 }
 
-export async function launchPlatforms(
-  content: ContentData,
-  platformIds: string[]
-): Promise<LaunchResult[]> {
-  const results: LaunchResult[] = []
-  let browser: Browser | null = null
-
-  try {
-    browser = await createBrowser()
-
-    for (const platformId of platformIds) {
-      const platform = platforms[platformId]
-      const config = platformConfigs[platformId]
-
-      if (!platform || !config) {
-        results.push({
-          success: false,
-          platform: platformId,
-          url: '',
-          error: '平台未配置',
-        })
-        continue
-      }
-
-      try {
-        let context: BrowserContext
-
-        if (fs.existsSync(config.storageFile)) {
-          context = await browser.newContext({
-            storageState: config.storageFile,
-          })
-        } else {
-          context = await browser.newContext()
-        }
-
-        const page = await context.newPage()
-        await page.setViewportSize({ width: 1400, height: 900 })
-
-        await platform.navigateToEditor(page)
-        await platform.fillContent(page, content)
-
-        const currentUrl = page.url()
-        results.push({
-          success: true,
-          platform: platformId,
-          url: currentUrl,
-        })
-
-        if (!fs.existsSync(config.storageFile)) {
-          await context.storageState({ path: config.storageFile })
-          console.log(`已保存 ${config.name} 登录状态到 ${config.storageFile}`)
-        }
-
-      } catch (error: any) {
-        results.push({
-          success: false,
-          platform: platformId,
-          url: '',
-          error: error.message || '未知错误',
-        })
-      }
-    }
-
-  } catch (error: any) {
-    console.error('Browser launch error:', error)
-    results.push({
-      success: false,
-      platform: 'all',
-      url: '',
-      error: error.message || '浏览器启动失败',
-    })
-  } finally {
-    if (browser) {
-      await browser.close()
-    }
-  }
-
-  return results
-}
-
 export async function authenticatePlatform(platformId: string): Promise<{ success: boolean; error?: string }> {
-  const platform = platforms[platformId]
   const config = platformConfigs[platformId]
 
-  if (!platform || !config) {
+  if (!config) {
     return { success: false, error: '平台未配置' }
   }
 
-  let browser: Browser | null = null
-
   try {
-    browser = await createBrowserForAuth()
+    const browser = await chromium.launch({ headless: false, channel: 'msedge' })
     const context = await browser.newContext()
     const page = await context.newPage()
     await page.setViewportSize({ width: 1400, height: 900 })
 
-    await page.goto(config.editorUrl, { waitUntil: 'networkidle' })
+    await page.goto(config.submissionTypes[0]?.editorUrl || '', { waitUntil: 'networkidle' })
 
     console.log(`请在打开的浏览器窗口中登录 ${config.name}`)
     console.log('登录完成后，按回车键继续...')
@@ -198,14 +204,10 @@ export async function authenticatePlatform(platformId: string): Promise<{ succes
     })
 
     await context.storageState({ path: config.storageFile })
-
     await browser.close()
 
     return { success: true }
   } catch (error: any) {
-    if (browser) {
-      await browser.close()
-    }
     return { success: false, error: error.message }
   }
 }

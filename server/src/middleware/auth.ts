@@ -24,7 +24,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   const authHeader = req.headers.authorization
 
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
-    res.status(401).json({ error: '未提供认证令牌' })
+    res.status(401).json({ error: '未登录，请先登录' })
     return
   }
 
@@ -32,7 +32,7 @@ export function authMiddleware(req: AuthRequest, res: Response, next: NextFuncti
   const decoded = verifyToken(token)
 
   if (!decoded) {
-    res.status(401).json({ error: '无效或已过期的令牌' })
+    res.status(401).json({ error: '登录已过期，请重新登录' })
     return
   }
 

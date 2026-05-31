@@ -1,0 +1,38 @@
+{
+  "manifest_version": 3,
+  "name": "七牛内容助手",
+  "version": "1.0.0",
+  "description": "一键填入内容到各大平台编辑器",
+  "permissions": ["activeTab", "storage", "clipboardRead", "clipboardWrite"],
+  "host_permissions": [
+    "http://localhost:5173/*",
+    "http://localhost:3000/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "http://localhost:5173/*"
+      ],
+      "js": ["main-site.js"],
+      "run_at": "document_end"
+    },
+    {
+      "matches": [
+        "*://member.bilibili.com/*",
+        "*://creator.xiaohongshu.com/*",
+        "*://mp.weixin.qq.com/*",
+        "*://zhuanlan.zhihu.com/*",
+        "*://www.bilibili.com/v/publish/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ]
+}

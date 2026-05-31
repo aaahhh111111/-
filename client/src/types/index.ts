@@ -20,16 +20,43 @@ export interface PlatformRules {
   specialFeatures: string[]
 }
 
+export type MediaType = 'text' | 'video' | 'image' | 'mixed'
+
+export interface MediaFile {
+  id: string
+  type: 'video' | 'image' | 'audio'
+  filename: string
+  local_path: string
+  url: string
+  size: number
+  duration?: number
+  mime_type: string
+}
+
 export interface Content {
   id: string
   title: string
   body: string
   tags: string[]
   images: string[]
+  media_type: MediaType
+  media_files: MediaFile[]
+  thumbnail?: string
   platforms: string[]
   platformContent: Record<string, PlatformContent>
   createdAt: string
   updatedAt: string
+}
+
+export interface ContentCreateInput {
+  title: string
+  body?: string
+  tags?: string[]
+  images?: string[]
+  media_type?: MediaType
+  media_files?: MediaFile[]
+  thumbnail?: string
+  platforms?: string[]
 }
 
 export interface PlatformContent {

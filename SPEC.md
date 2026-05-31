@@ -260,10 +260,23 @@ interface Content {
   body: string
   tags: string[]
   images: string[]
+  media_type: 'text' | 'video' | 'image' | 'mixed'
+  media_files: MediaFile[]
+  thumbnail?: string
   platforms: string[]
   platform_content: Record<string, PlatformContent>
   created_at: string
   updated_at: string
+}
+
+interface MediaFile {
+  id: string
+  type: 'video' | 'image' | 'audio'
+  filename: string
+  local_path: string
+  url: string
+  size: number
+  mime_type: string
 }
 ```
 
@@ -304,20 +317,23 @@ cd client && npm run dev
 ## 9. 真实平台发布功能
 
 ### 功能概述
-通过 Playwright 浏览器自动化技术，实现一键打开各平台编辑器并自动填入内容，用户在各平台手动确认发布。
+通过 Playwright 浏览器自动化技术，实现一键打开各平台编辑器并自动填入内容，支持视频、图片、文本等多种媒体类型，用户在各平台手动确认发布。
 
 ### 技术实现
-- **浏览器自动化**: Playwright (Chromium)
+- **浏览器自动化**: Playwright (Chromium/Edge)
 - **登录态管理**: storageState 保存浏览器上下文
 - **自动填表**: 自动定位并填写标题、正文、标签等字段
+- **文件上传**: 支持通过 input[type="file"] 上传本地视频/图片
 
-### 支持平台
-| 平台 | 编辑器URL | 填写字段 |
-|------|-----------|----------|
-| 微信公众号 | https://mp.weixin.qq.com/ | 标题、正文 |
-| 知乎 | https://zhuanlan.zhihu.com/write | 标题、正文、话题 |
-| 小红书 | https://creator.xiaohongshu.com/publish/publish | 标题、正文、标签 |
-| B站 | https://member.bilibili.com/v2#/upload/article | 标题、正文、标签 |
+### 支持平台和发布类型
+| 平台 | 发布类型 | 编辑器URL |
+|------|----------|-----------|
+| 微信公众号 | 图文消息 | https://mp.weixin.qq.com/ |
+| 知乎 | 文章 | https://zhuanlan.zhihu.com/write |
+| 小红书 | 笔记 | https://creator.xiaohongshu.com/publish/publish |
+| B站 | 专栏 | https://member.bilibili.com/read/editor/ |
+| B站 | 视频投稿 | https://member.bilibili.com/v2#/upload/video |
+| B站 | 动态 | https://www.bilibili.com/v/publish/dynamic |
 
 ### API接口
 
@@ -327,14 +343,32 @@ Request: {
   "title": "string",
   "body": "string",
   "tags": "string[]",
-  "platforms": "string[]"
+  "platforms": "string[]",
+  "media_type": "text|video|image|mixed",
+  "media_files": [{ "id": "string", "type": "video|image", "local_path": "string" }],
+  "thumbnail": "string",
+  "submission_types": { "bilibili": "video|article|dynamic" }
 }
 Response: {
   "success": true,
   "results": [
     { "platform": "wechat", "success": true, "url": "string" },
-    { "platform": "zhihu", "success": true, "url": "string" }
+    { "platform": "bilibili", "success": true, "url": "string" }
   ]
+}
+```
+
+#### POST /api/upload/upload
+```json
+Request: FormData (file)
+Response: {
+  "id": "string",
+  "type": "video|image|audio",
+  "filename": "string",
+  "local_path": "string",
+  "url": "string",
+  "size": 1234567,
+  "mime_type": "video/mp4"
 }
 ```
 

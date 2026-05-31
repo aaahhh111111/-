@@ -1,11 +1,11 @@
 import { Page, BrowserContext } from 'playwright'
 import { BasePlatform } from './BasePlatform'
-import { ContentData, platformConfigs } from '../config'
+import { ContentData, getPlatformEditorUrl } from '../config'
 
 export class XiaohongshuPlatform extends BasePlatform {
   platformId = 'xiaohongshu'
   platformName = '小红书'
-  editorUrl = platformConfigs.xiaohongshu.editorUrl
+  editorUrl = getPlatformEditorUrl('xiaohongshu')
 
   async getLoginStatus(context: BrowserContext): Promise<boolean> {
     try {
@@ -24,8 +24,9 @@ export class XiaohongshuPlatform extends BasePlatform {
 
   async navigateToEditor(page: Page): Promise<void> {
     console.log('正在跳转到小红书创作者中心...')
-    await page.goto(this.editorUrl, { waitUntil: 'networkidle', timeout: 30000 })
-    await this.delay(3000)
+    await page.goto(this.editorUrl, { waitUntil: 'networkidle', timeout: 60000 })
+    await page.waitForLoadState('domcontentloaded')
+    await this.delay(5000)
     console.log('当前URL:', page.url())
   }
 

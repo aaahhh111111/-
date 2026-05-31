@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
   ArrowLeft,
@@ -13,11 +13,16 @@ import {
   Video,
   BookOpen,
   ExternalLink,
+  Upload,
+  X,
+  Image,
+  Film,
 } from 'lucide-react'
 import { GlassButton, GlassCard, GlassInput } from '@/components/ui'
 import RichEditor from '@/components/Editor/RichEditor'
-import { contentApi, publishApi, LaunchResult } from '@/services/api'
-import type { Content, Platform } from '@/types'
+import { contentApi, publishApi, uploadApi, LaunchResult } from '@/services/api'
+import { useAuthStore } from '@/store/authStore'
+import type { Content, Platform, MediaFile, MediaType } from '@/types'
 
 const platformIcons: Record<string, React.ReactNode> = {
   wechat: <MessageCircle className="w-5 h-5" />,
@@ -44,11 +49,13 @@ export default function Editor() {
   const { id } = useParams()
   const navigate = useNavigate()
   const isEditing = Boolean(id)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const [loading, setLoading] = useState(isEditing)
   const [saving, setSaving] = useState(false)
   const [publishing, setPublishing] = useState(false)
   const [previewing, setPreviewing] = useState(false)
+  const [uploading, setUploading] = useState(false)
 
   const [content, setContent] = useState<Partial<Content>>({
     title: '',
@@ -56,11 +63,15 @@ export default function Editor() {
     tags: [],
     platforms: [],
     platformContent: {},
+    media_type: 'text',
+    media_files: [],
+    thumbnail: undefined,
   })
   const [tagInput, setTagInput] = useState('')
   const [platforms, setPlatforms] = useState<Platform[]>([])
   const [publishResults, setPublishResults] = useState<any[]>([])
   const [showResults, setShowResults] = useState(false)
+  const [submissionTypes, setSubmissionTypes] = useState<Record<string, string>>({})
 
   useEffect(() => {
     loadPlatforms()
@@ -98,17 +109,48 @@ export default function Editor() {
 
     setSaving(true)
     try {
+      let savedContent
       if (isEditing && id) {
         await contentApi.update(id, content)
+        savedContent = { ...content, id, timestamp: Date.now() }
       } else {
-        const created = await contentApi.create(content)
-        navigate(`/editor/${created.id}`, { replace: true })
+        savedContent = await contentApi.create(content)
+        savedContent.timestamp = Date.now()
+        navigate(`/editor/${savedContent.id}`, { replace: true })
       }
+      
+      // 同步内容到扩展
+      syncToExtension(savedContent)
     } catch (error) {
       console.error('Failed to save:', error)
       alert('保存失败')
     } finally {
       setSaving(false)
+    }
+  }
+  
+  // 同步内容到浏览器扩展
+  const syncToExtension = async (contentData: any) => {
+    try {
+      // 保存到 localStorage（供第三方页面读取）
+      const saveData = {
+        id: contentData.id,
+        title: contentData.title,
+        body: contentData.body,
+        tags: contentData.tags || [],
+        timestamp: Date.now()
+      }
+      localStorage.setItem('qiniu_last_saved_content', JSON.stringify(saveData))
+      localStorage.setItem('qiniu_pending_content_id', contentData.id)
+      
+      // 通过全局函数触发主站脚本同步
+      if (typeof window !== 'undefined' && (window as any).__qiniuSyncToExtension) {
+        await (window as any).__qiniuSyncToExtension(saveData)
+      }
+      
+      console.log('内容已同步到扩展')
+    } catch (e) {
+      console.warn('同步到扩展失败:', e)
     }
   }
 
@@ -140,8 +182,8 @@ export default function Editor() {
   }
 
   const handlePublish = async () => {
-    if (!isEditing || !id) {
-      alert('请先保存内容')
+    if (!content.title?.trim()) {
+      alert('请先填写标题')
       return
     }
 
@@ -153,32 +195,100 @@ export default function Editor() {
     setPublishing(true)
     setShowResults(false)
     try {
-      const data = await publishApi.launch(
+      const data = await publishApi.prepare(
         content.title || '',
         content.body || '',
         content.tags || [],
-        content.platforms!
+        content.platforms!,
+        {
+          media_type: content.media_type,
+          media_files: content.media_files,
+          thumbnail: content.thumbnail,
+          submission_types: submissionTypes,
+        }
       )
 
-      const launchResults: any[] = data.results.map((result: LaunchResult) => ({
-        platform: result.platform,
-        status: result.success ? 'redirect' : 'error',
-        message: result.success ? '已在浏览器中打开编辑器' : (result.error || '启动失败'),
-        url: result.url,
+      const launchResults: any[] = data.platforms.map((platform: any) => ({
+        platform: platform.platform,
+        name: platform.name,
+        icon: platform.icon,
+        status: 'link',
+        url: platform.url,
+        message: '点击链接前往发布',
       }))
 
       setPublishResults(launchResults)
       setShowResults(true)
 
-      if (data.success && data.results.some((r: LaunchResult) => r.success)) {
-        alert('已打开各平台编辑器，请在浏览器中确认发布')
-      }
-    } catch (error) {
-      console.error('Failed to publish:', error)
-      alert('启动失败，请确保后端服务正在运行')
+      // 保存到 localStorage（供 hash 路由页面读取）
+      localStorage.setItem('qiniu_pending_content_id', data.contentId)
+      
+      // 发布时再次同步内容到扩展（确保最新）
+      syncToExtension({ ...content, id: data.contentId, timestamp: Date.now() })
+
+      alert('已生成发布链接，请点击链接前往各平台')
+    } catch (error: any) {
+      console.error('Failed to prepare publish:', error)
+      const errorMessage = error.response?.data?.error || error.message || '未知错误'
+      alert(`准备发布失败: ${errorMessage}`)
     } finally {
       setPublishing(false)
     }
+  }
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+
+    setUploading(true)
+    try {
+      const fileArray = Array.from(files)
+      const uploadedFiles = await uploadApi.uploadFiles(fileArray)
+
+      setContent((prev) => {
+        const newMediaFiles = [...(prev.media_files || []), ...uploadedFiles]
+        const mediaType = determineMediaType(newMediaFiles)
+        return {
+          ...prev,
+          media_files: newMediaFiles,
+          media_type: mediaType,
+        }
+      })
+    } catch (error) {
+      console.error('Failed to upload files:', error)
+      alert('上传失败')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
+  const determineMediaType = (files: MediaFile[]): MediaType => {
+    if (files.some(f => f.type === 'video')) return 'video'
+    if (files.some(f => f.type === 'image')) return 'image'
+    if (files.some(f => f.type === 'audio')) return 'audio'
+    return 'text'
+  }
+
+  const removeMediaFile = (fileId: string) => {
+    setContent((prev) => {
+      const newMediaFiles = prev.media_files?.filter(f => f.id !== fileId) || []
+      const mediaType = newMediaFiles.length === 0 ? 'text' : determineMediaType(newMediaFiles)
+      return {
+        ...prev,
+        media_files: newMediaFiles,
+        media_type: mediaType,
+      }
+    })
+  }
+
+  const handleThumbnailSelect = (fileId: string) => {
+    setContent((prev) => ({
+      ...prev,
+      thumbnail: prev.thumbnail === fileId ? undefined : fileId,
+    }))
   }
 
   const togglePlatform = (platformId: string) => {
@@ -188,6 +298,23 @@ export default function Editor() {
         ? prev.platforms.filter((p) => p !== platformId)
         : [...(prev.platforms || []), platformId],
     }))
+  }
+
+  const handleSubmissionTypeChange = (platformId: string, type: string) => {
+    setSubmissionTypes((prev) => ({
+      ...prev,
+      [platformId]: type,
+    }))
+  }
+
+  const getSelectedPlatformSubmissionTypes = (platformId: string): string[] => {
+    const platform = platforms.find(p => p.id === platformId)
+    return (platform as any)?.submissionTypes || ['article']
+  }
+
+  const getSubmissionTypeName = (platformId: string, type: string): string => {
+    const platform = platforms.find(p => p.id === platformId)
+    return (platform as any)?.submissionTypeNames?.[type] || type
   }
 
   const addTag = () => {
@@ -260,7 +387,7 @@ export default function Editor() {
               ) : (
                 <Send className="w-4 h-4" />
               )}
-              模拟发布
+              一键发布
             </GlassButton>
           </div>
         </div>
@@ -285,6 +412,90 @@ export default function Editor() {
                     onChange={(body) => setContent((prev) => ({ ...prev, body }))}
                   />
                 </div>
+              </div>
+            </GlassCard>
+
+            {/* 媒体上传区域 */}
+            <GlassCard>
+              <div className="p-6 space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-sm font-medium text-white/80">上传媒体</label>
+                  <span className="text-xs text-white/50">
+                    当前类型: <span className="text-pink-400 capitalize">{content.media_type}</span>
+                  </span>
+                </div>
+
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept="video/*,image/*,audio/*"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="w-full p-6 border-2 border-dashed border-white/20 rounded-xl hover:border-white/40 transition-colors flex flex-col items-center gap-2 text-white/60 hover:text-white/80"
+                >
+                  {uploading ? (
+                    <Loader2 className="w-8 h-8 animate-spin" />
+                  ) : (
+                    <Upload className="w-8 h-8" />
+                  )}
+                  <span>{uploading ? '上传中...' : '点击或拖拽文件到此处上传'}</span>
+                  <span className="text-xs text-white/40">支持视频、图片、音频文件</span>
+                </button>
+
+                {/* 已上传文件列表 */}
+                {content.media_files && content.media_files.length > 0 && (
+                  <div className="space-y-2">
+                    <label className="block text-sm font-medium text-white/80">已上传文件</label>
+                    {content.media_files.map((file) => (
+                      <div
+                        key={file.id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border ${
+                          content.thumbnail === file.id
+                            ? 'border-pink-400 bg-pink-500/10'
+                            : 'border-white/20 bg-white/5'
+                        }`}
+                      >
+                        {file.type === 'video' ? (
+                          <Film className="w-5 h-5 text-pink-400" />
+                        ) : file.type === 'image' ? (
+                          <Image className="w-5 h-5 text-green-400" />
+                        ) : (
+                          <Video className="w-5 h-5 text-blue-400" />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-white text-sm truncate">{file.filename}</p>
+                          <p className="text-white/50 text-xs">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                        {file.type === 'image' && (
+                          <button
+                            onClick={() => handleThumbnailSelect(file.id)}
+                            className={`px-2 py-1 text-xs rounded ${
+                              content.thumbnail === file.id
+                                ? 'bg-pink-500 text-white'
+                                : 'bg-white/10 text-white/70 hover:bg-white/20'
+                            }`}
+                          >
+                            封面
+                          </button>
+                        )}
+                        <button
+                          onClick={() => removeMediaFile(file.id)}
+                          className="p-1 text-white/50 hover:text-red-400"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </GlassCard>
 
@@ -329,28 +540,52 @@ export default function Editor() {
               <div className="p-6">
                 <label className="block text-sm font-medium text-white/80 mb-3">选择发布平台</label>
                 <div className="space-y-3">
-                  {platforms.map((platform) => (
-                    <button
-                      key={platform.id}
-                      onClick={() => togglePlatform(platform.id)}
-                      className={`
-                        w-full p-4 rounded-xl border transition-all flex items-center gap-3
-                        ${
-                          content.platforms?.includes(platform.id)
-                            ? platformColors[platform.id]
-                            : 'border-white/20 bg-white/5 hover:bg-white/10'
-                        }
-                      `}
-                    >
-                      <span className={platformTextColors[platform.id] || 'text-white'}>
-                        {platformIcons[platform.id]}
-                      </span>
-                      <span className="text-white font-medium">{platform.name}</span>
-                      {content.platforms?.includes(platform.id) && (
-                        <CheckCircle className="w-5 h-5 text-green-400 ml-auto" />
-                      )}
-                    </button>
-                  ))}
+                  {platforms.map((platform) => {
+                    const isSelected = content.platforms?.includes(platform.id)
+                    const hasMultipleTypes = (platform as any).submissionTypes?.length > 1
+
+                    return (
+                      <div key={platform.id} className="space-y-2">
+                        <button
+                          onClick={() => togglePlatform(platform.id)}
+                          className={`
+                            w-full p-4 rounded-xl border transition-all flex items-center gap-3
+                            ${isSelected
+                              ? platformColors[platform.id]
+                              : 'border-white/20 bg-white/5 hover:bg-white/10'
+                            }
+                          `}
+                        >
+                          <span className={platformTextColors[platform.id] || 'text-white'}>
+                            {platformIcons[platform.id]}
+                          </span>
+                          <span className="text-white font-medium">{platform.name}</span>
+                          {isSelected && (
+                            <CheckCircle className="w-5 h-5 text-green-400 ml-auto" />
+                          )}
+                        </button>
+
+                        {/* 发布类型选择 */}
+                        {isSelected && hasMultipleTypes && (
+                          <div className="flex flex-wrap gap-2 pl-4">
+                            {(platform as any).submissionTypes.map((type: string) => (
+                              <button
+                                key={type}
+                                onClick={() => handleSubmissionTypeChange(platform.id, type)}
+                                className={`px-3 py-1 text-xs rounded-full transition-colors ${
+                                  submissionTypes[platform.id] === type || (!submissionTypes[platform.id] && type === 'article')
+                                    ? 'bg-pink-500 text-white'
+                                    : 'bg-white/10 text-white/70 hover:bg-white/20'
+                                }`}
+                              >
+                                {(platform as any).submissionTypeNames?.[type] || type}
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             </GlassCard>
@@ -375,6 +610,11 @@ export default function Editor() {
                               {platformIcons[platformId]}
                             </span>
                             <span className="text-white font-medium">{platform?.name}</span>
+                            {submissionTypes[platformId] && (
+                              <span className="text-xs text-white/50 ml-1">
+                                ({(platform as any)?.submissionTypeNames?.[submissionTypes[platformId]]})
+                              </span>
+                            )}
                           </div>
                           <h4 className="text-white/90 font-medium mb-2">{pc.adaptedTitle}</h4>
                           <p className="text-white/60 text-sm line-clamp-3 mb-2">{pc.adaptedBody}</p>
@@ -398,48 +638,41 @@ export default function Editor() {
             {showResults && publishResults.length > 0 && (
               <GlassCard>
                 <div className="p-6">
-                  <h3 className="text-white font-medium mb-4">发布结果</h3>
+                  <h3 className="text-white font-medium mb-4 flex items-center gap-2">
+                    <ExternalLink className="w-5 h-5 text-blue-400" />
+                    发布链接 - 点击前往各平台
+                  </h3>
                   <div className="space-y-3">
-                    {publishResults.map((result: any, index: number) => {
-                      const platform = platforms.find((p) => p.id === result.platform)
-                      return (
-                        <div
-                          key={index}
-                          className={`p-4 rounded-xl border ${
-                            result.status === 'redirect'
-                              ? 'border-green-400/50 bg-green-500/10'
-                              : result.status === 'simulated'
-                              ? 'border-green-400/50 bg-green-500/10'
-                              : 'border-red-400/50 bg-red-500/10'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className={platformTextColors[result.platform] || 'text-white'}>
-                              {platformIcons[result.platform]}
-                            </span>
-                            <span className="text-white font-medium">{platform?.name}</span>
-                            {result.status === 'redirect' || result.status === 'simulated' ? (
-                              <CheckCircle className="w-5 h-5 text-green-400 ml-auto" />
-                            ) : (
-                              <AlertCircle className="w-5 h-5 text-red-400 ml-auto" />
+                    {publishResults.map((result: any, index: number) => (
+                      <div
+                        key={index}
+                        className="p-4 rounded-xl border border-white/20 bg-white/5 hover:bg-white/10 transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <span className="text-2xl">{result.icon}</span>
+                          <div className="flex-1">
+                            <span className="text-white font-medium">{result.name}</span>
+                            {result.submissionType && (
+                              <span className="text-white/50 text-sm ml-2">({result.submissionType})</span>
                             )}
                           </div>
-                          <p className="text-white/70 text-sm mt-2">{result.message}</p>
-                          {result.url && result.url !== 'about:blank' && (
-                            <a
-                              href={result.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center gap-1 text-blue-400 text-sm mt-2 hover:underline"
-                            >
-                              <ExternalLink className="w-3 h-3" />
-                              打开编辑器
-                            </a>
-                          )}
+                          <a
+                            href={result.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-lg text-sm font-medium hover:opacity-90 transition-opacity flex items-center gap-2"
+                          >
+                            前往发布
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
                         </div>
-                      )
-                    })}
+                        <p className="text-white/50 text-xs mt-2">点击后在平台上点击「七」按钮一键填入内容</p>
+                      </div>
+                    ))}
                   </div>
+                  <p className="text-white/60 text-sm mt-4 text-center">
+                    请在每个平台编辑器中点击浏览器工具栏的「七牛」扩展图标
+                  </p>
                 </div>
               </GlassCard>
             )}

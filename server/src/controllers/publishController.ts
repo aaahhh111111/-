@@ -1,10 +1,61 @@
 import { Router, Response } from 'express'
-import { launchPlatforms, getAuthStatus, authenticatePlatform } from '../services/platformLauncher'
+import { ContentModel } from '../models/Content'
+import { platformConfigs } from '../playwright/config'
 import type { AuthRequest } from '../middleware/auth'
 
 const router = Router()
 
-router.post('/launch', async (req, res: Response) => {
+// 获取带 contentId 的平台链接
+function getPlatformUrl(platformId: string, contentId: string, submissionType?: string): string {
+  const config = platformConfigs[platformId]
+  if (!config) return ''
+  
+  let editorUrl = ''
+  
+  if (platformId === 'bilibili') {
+    if (submissionType === 'video') {
+      editorUrl = 'https://member.bilibili.com/v2#/upload/video'
+    } else if (submissionType === 'dynamic') {
+      editorUrl = 'https://www.bilibili.com/v/publish/dynamic'
+    } else {
+      editorUrl = 'https://member.bilibili.com/read/editor/#/'
+    }
+  } else if (platformId === 'wechat') {
+    editorUrl = 'https://mp.weixin.qq.com/'
+  } else if (platformId === 'zhihu') {
+    editorUrl = 'https://zhuanlan.zhihu.com/write'
+  } else if (platformId === 'xiaohongshu') {
+    editorUrl = 'https://creator.xiaohongshu.com/creator/post'
+  }
+  
+  const separator = editorUrl.includes('?') ? '&' : '?'
+  return `${editorUrl}${separator}qiniu_cid=${contentId}`
+}
+
+// 获取平台名称
+function getPlatformName(platformId: string): string {
+  const names: Record<string, string> = {
+    wechat: '微信公众号',
+    zhihu: '知乎',
+    bilibili: 'B站',
+    xiaohongshu: '小红书',
+  }
+  return names[platformId] || platformId
+}
+
+// 获取平台图标
+function getPlatformIcon(platformId: string): string {
+  const icons: Record<string, string> = {
+    wechat: '💚',
+    zhihu: '💬',
+    bilibili: '📺',
+    xiaohongshu: '📕',
+  }
+  return icons[platformId] || '🌐'
+}
+
+// 发布内容 - 不弹出浏览器，只返回链接
+router.post('/prepare', (req, res: Response) => {
   try {
     const authReq = req as AuthRequest
     if (!authReq.userId) {
@@ -12,7 +63,7 @@ router.post('/launch', async (req, res: Response) => {
       return
     }
 
-    const { title, body, tags, platforms: platformIds } = req.body
+    const { title, body, tags, platforms: platformIds, media_type, media_files, thumbnail, submission_types } = req.body
 
     if (!title) {
       res.status(400).json({ error: '标题不能为空' })
@@ -24,61 +75,38 @@ router.post('/launch', async (req, res: Response) => {
       return
     }
 
-    const content = { title, body: body || '', tags: tags || [] }
+    // 保存内容
+    const content = ContentModel.create({
+      user_id: authReq.userId,
+      title,
+      body,
+      tags: tags || [],
+      images: media_files || [],
+      platforms: platformIds,
+    })
 
-    console.log(`启动平台发布: ${platformIds.join(', ')}`)
-    console.log(`内容标题: ${title}`)
+    const contentId = content.id
 
-    const results = await launchPlatforms(content, platformIds)
+    // 生成平台链接
+    const platformLinks = platformIds.map(platformId => ({
+      platform: platformId,
+      name: getPlatformName(platformId),
+      icon: getPlatformIcon(platformId),
+      url: getPlatformUrl(platformId, contentId, submission_types?.[platformId]),
+      submissionType: submission_types?.[platformId],
+    }))
+
+    console.log(`准备发布: ${platformIds.join(', ')}, Content ID: ${contentId}`)
 
     res.json({
       success: true,
-      results,
-      message: `已启动 ${results.length} 个平台的编辑器`,
+      contentId,
+      platforms: platformLinks,
+      message: `已生成 ${platformLinks.length} 个平台的链接`,
     })
   } catch (error: any) {
-    console.error('Launch platforms error:', error)
-    res.status(500).json({ error: error.message || '启动平台失败' })
-  }
-})
-
-router.get('/auth-status', async (req, res: Response) => {
-  try {
-    const authReq = req as AuthRequest
-    if (!authReq.userId) {
-      res.status(401).json({ error: '未认证' })
-      return
-    }
-
-    const status = await getAuthStatus()
-
-    res.json({ platforms: status })
-  } catch (error: any) {
-    console.error('Get auth status error:', error)
-    res.status(500).json({ error: error.message || '获取状态失败' })
-  }
-})
-
-router.post('/authenticate/:platform', async (req, res: Response) => {
-  try {
-    const authReq = req as AuthRequest
-    if (!authReq.userId) {
-      res.status(401).json({ error: '未认证' })
-      return
-    }
-
-    const { platform } = req.params
-
-    const result = await authenticatePlatform(platform)
-
-    if (result.success) {
-      res.json({ success: true, message: `${platform} 授权成功` })
-    } else {
-      res.status(400).json({ success: false, error: result.error || '授权失败' })
-    }
-  } catch (error: any) {
-    console.error('Authenticate error:', error)
-    res.status(500).json({ error: error.message || '授权过程出错' })
+    console.error('Prepare publish error:', error)
+    res.status(500).json({ error: error.message || '准备发布失败' })
   }
 })
 
