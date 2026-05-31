@@ -1,4 +1,9 @@
-<!-- Failed to upload "3ee5a2886ac3adaf38bc08ad0ddf91d0_raw.mp4" -->
+## 项目演示视频
+<center>
+<video width="600" controls>
+  <source src="3ee5a2886ac3adaf38bc08ad0ddf91d0_raw.mp4" type="video/mp4">
+</video>
+</center>
 # 多平台内容发布工具
 
 一款帮助创作者在微信公众号、知乎、B站、小红书等平台同步发布内容的工具，自动适配各平台格式与风格。
