@@ -1,9 +1,6 @@
+
 ## 项目演示视频
-<center>
-<video width="600" controls>
-  <source src="https://user-images.githubusercontent.com/213208978/600633827-46428234-10ab-44e0-bf50-eccd5979aa2a.mp4" type="video/mp4">
-</video>
-</center>
+https://user-images.githubusercontent.com/213208978/600633827-46428234-10ab-44e0-bf50-eccd5979aa2a.mp4
 
 # 多平台内容发布工具
 
